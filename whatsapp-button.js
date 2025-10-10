@@ -1,21 +1,35 @@
+<script>
 (function() {
   'use strict';
 
   document.addEventListener('DOMContentLoaded', function() {
     const defaults = {
-      phone: "", message: "Hello!", helpText: "How can we help you?",
-      helpPosition: "top", helpDelayMs: 800, helpDurationMs: 0, 
-      helpDismissible: true, rememberHelpClose: false, helpCloseTTLHours: 0, 
-      badge: "", badgePulse: true, offset: { bottom: 20, side: 20 }
+      phone: "",
+      message: "Hello!",
+      helpText: "How can we help you?",
+      helpPosition: "top",
+      helpDelayMs: 800,
+      helpDurationMs: 0,
+      helpDismissible: true,
+      rememberHelpClose: false,
+      helpCloseTTLHours: 0,
+      badge: "",
+      badgePulse: true,
+      offset: { bottom: 20, side: 20 }
     };
+
     const userConfig = window.SetlyyWhatsApp || {};
-    const config = { ...defaults, ...userConfig, offset: { ...defaults.offset, ...userConfig.offset } };
+    const config = {
+      ...defaults,
+      ...userConfig,
+      offset: { ...defaults.offset, ...userConfig.offset }
+    };
 
     if (!config.phone) {
       console.error("Setlyy Widget: WhatsApp phone number is not defined.");
       return;
     }
-    
+
     const STORAGE_KEY = `setlyy_whatsapp_closed_${config.phone}`;
 
     function createWidgetElements() {
@@ -27,21 +41,7 @@
       widget.href = `https://wa.me/${config.phone.replace(/\D/g, '')}?text=${encodeURIComponent(config.message)}`;
       widget.setAttribute('aria-label', 'Contact us on WhatsApp');
 
-      const bubble = document.createElement('div');
-      bubble.classList.add('setlyy-bubble');
-      
-      const bubbleText = document.createElement('p');
-      bubbleText.textContent = config.helpText;
-      bubble.appendChild(bubbleText);
-      
-      if (config.helpDismissible) {
-        const dismissBtn = document.createElement('button');
-        dismissBtn.classList.add('setlyy-dismiss-btn');
-        dismissBtn.setAttribute('aria-label', 'Dismiss');
-        dismissBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
-        bubble.appendChild(dismissBtn);
-      }
-      
+      // --- Button
       const button = document.createElement('div');
       button.classList.add('setlyy-button');
       button.innerHTML = `
@@ -51,6 +51,7 @@
           </svg>
         </span>`;
 
+      // --- Badge (optionnel)
       if (config.badge) {
         const badgeContainer = document.createElement('span');
         badgeContainer.classList.add('setlyy-badge-container');
@@ -65,21 +66,41 @@
         badgeContainer.appendChild(badge);
         button.appendChild(badgeContainer);
       }
-      
-      widget.appendChild(bubble);
+
+      // --- Bubble (créée uniquement si helpText non vide)
+      let bubble = null;
+      const hasHelpText = typeof config.helpText === 'string' && config.helpText.trim().length > 0;
+      if (hasHelpText) {
+        bubble = document.createElement('div');
+        bubble.classList.add('setlyy-bubble');
+
+        const bubbleText = document.createElement('p');
+        bubbleText.textContent = config.helpText;
+        bubble.appendChild(bubbleText);
+
+        if (config.helpDismissible) {
+          const dismissBtn = document.createElement('button');
+          dismissBtn.classList.add('setlyy-dismiss-btn');
+          dismissBtn.setAttribute('aria-label', 'Dismiss');
+          dismissBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
+          bubble.appendChild(dismissBtn);
+        }
+        widget.appendChild(bubble);
+      }
+
       widget.appendChild(button);
       document.body.appendChild(widget);
-      
-      return { widget, bubble };
+      return { widget, bubble, hasHelpText };
     }
 
-    function injectStyles() {
+    function injectStyles(hasHelpText) {
       let bubblePositionCss = '';
       switch (config.helpPosition) {
         case 'left':
           bubblePositionCss = `right: calc(100% + 12px); bottom: 0; transform-origin: center right;`;
           break;
-        case 'top': default:
+        case 'top':
+        default:
           bubblePositionCss = `bottom: calc(100% + 12px); right: 0; transform-origin: bottom right;`;
           break;
       }
@@ -98,33 +119,13 @@
           transition: transform 0.2s; position: relative; flex-shrink: 0;
         }
         .setlyy-widget:hover .setlyy-button { transform: scale(1.1); }
-        .setlyy-icon {
-          width: 50%; height: 50%; color: white;
-          display: flex; align-items: center; justify-content: center;
-          line-height: 0;
-        }
-        .setlyy-icon svg {
-          display: block;
-          width: 100%;
-          height: 100%;
-          fill: currentColor;
-        }
-        .setlyy-badge-container {
-          position: absolute; top: -0.25rem; right: -0.25rem;
-          display: flex; height: 1.25rem; width: 1.25rem;
-        }
-        .setlyy-badge-static {
-          position: relative; display: inline-flex; border-radius: 9999px;
-          height: 1.25rem; width: 1.25rem; background-color: #ef4444;
-          color: white; font-size: 0.75rem; font-weight: bold;
-          align-items: center; justify-content: center;
-        }
-        .setlyy-badge-ping {
-          animation: setlyy-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-          position: absolute; display: inline-flex; height: 100%; width: 100%;
-          border-radius: 9999px; background-color: #f87171; opacity: 0.75;
-        }
+        .setlyy-icon { width: 50%; height: 50%; color: white; display: flex; align-items: center; justify-content: center; line-height: 0; }
+        .setlyy-icon svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+        .setlyy-badge-container { position: absolute; top: -0.25rem; right: -0.25rem; display: flex; height: 1.25rem; width: 1.25rem; }
+        .setlyy-badge-static { position: relative; display: inline-flex; border-radius: 9999px; height: 1.25rem; width: 1.25rem; background-color: #ef4444; color: white; font-size: 0.75rem; font-weight: bold; align-items: center; justify-content: center; }
+        .setlyy-badge-ping { animation: setlyy-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; position: absolute; display: inline-flex; height: 100%; width: 100%; border-radius: 9999px; background-color: #f87171; opacity: 0.75; }
         @keyframes setlyy-ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+        ${hasHelpText ? `
         .setlyy-bubble {
           position: absolute; background-color: white; border-radius: 0.5rem;
           box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
@@ -134,31 +135,23 @@
           width: 85vw; max-width: 280px;
         }
         .setlyy-bubble.setlyy-bubble--visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-        .setlyy-bubble p {
-          margin: 0; color: #1f2937;
-          font-size: clamp(0.8125rem, 4vw, 0.90rem);
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-        .setlyy-dismiss-btn {
-          position: absolute; top: -0.5rem; right: -0.5rem;
-          background-color: #e2e8f0; border-radius: 9999px;
-          padding: 2px; border: none; cursor: pointer; display: flex;
-          align-items: center; justify-content: center; color: #64748b;
-        }
+        .setlyy-bubble p { margin: 0; color: #1f2937; font-size: clamp(0.8125rem, 4vw, 0.90rem); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .setlyy-dismiss-btn { position: absolute; top: -0.5rem; right: -0.5rem; background-color: #e2e8f0; border-radius: 9999px; padding: 2px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
         .setlyy-dismiss-btn:hover { color: #1e293b; }
         .setlyy-dismiss-btn svg { width: 1rem; height: 1rem; }
+        `: ``}
       `;
       const styleSheet = document.createElement("style");
       styleSheet.innerText = css;
       document.head.appendChild(styleSheet);
     }
-    
-    function initializeLogic(widget, bubble) {
+
+    function initializeLogic(widget, bubble, hasHelpText) {
       widget.style.setProperty('--setlyy-offset-bottom', `${config.offset.bottom}px`);
       widget.style.setProperty('--setlyy-offset-side', `${config.offset.side}px`);
-      
+
       widget.addEventListener('click', () => {
-        const trackClick = async () => {
+        (async () => {
           try {
             await fetch('https://api.setlyy.com/webhook/Count-Click-Whatsapp-Button', {
               method: 'POST',
@@ -168,9 +161,11 @@
           } catch (error) {
             console.error('Setlyy Widget: Could not track click.', error);
           }
-        };
-        trackClick();
+        })();
       });
+
+      // Si pas de helpText, on stoppe là : aucune bulle, aucun timer
+      if (!hasHelpText || !bubble) return;
 
       let wasClosedManually = false;
       let lastClosedTimestamp = 0;
@@ -183,38 +178,48 @@
       } catch (e) {}
 
       const hoursSinceLastClose = (Date.now() - lastClosedTimestamp) / (3600 * 1000);
-      const shouldHideBubble = (config.rememberHelpClose && wasClosedManually && (!config.helpCloseTTLHours || hoursSinceLastClose < config.helpCloseTTLHours));
+      const shouldHideBubble =
+        (config.rememberHelpClose && wasClosedManually &&
+         (!config.helpCloseTTLHours || hoursSinceLastClose < config.helpCloseTTLHours));
 
       if (shouldHideBubble) return;
 
       const showBubble = () => bubble.classList.add('setlyy-bubble--visible');
       const hideBubble = () => bubble.classList.remove('setlyy-bubble--visible');
+
       const showTimeout = setTimeout(showBubble, config.helpDelayMs);
 
       if (config.helpDurationMs > 0) {
         setTimeout(() => {
           hideBubble();
-          if (config.rememberAutoClose) {
+          // correction: on persiste via rememberHelpClose (pas rememberAutoClose)
+          if (config.rememberHelpClose) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ manual: false, timestamp: Date.now() }));
           }
         }, config.helpDelayMs + config.helpDurationMs);
       }
-      
+
       if (config.helpDismissible) {
         const dismissBtn = bubble.querySelector('.setlyy-dismiss-btn');
-        dismissBtn.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          clearTimeout(showTimeout);
-          hideBubble();
-          if (config.rememberHelpClose) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ manual: true, timestamp: Date.now() }));
-          }
-        });
+        if (dismissBtn) {
+          dismissBtn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            clearTimeout(showTimeout);
+            hideBubble();
+            if (config.rememberHelpClose) {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify({ manual: true, timestamp: Date.now() }));
+            }
+          });
+        }
       }
     }
-    
-    injectStyles();
-    const { widget, bubble } = createWidgetElements();
-    initializeLogic(widget, bubble);
+
+    const { widget, bubble, hasHelpText } = (function setup() {
+      injectStyles(typeof config.helpText === 'string' && config.helpText.trim().length > 0);
+      const els = createWidgetElements();
+      initializeLogic(els.widget, els.bubble, els.hasHelpText);
+      return els;
+    })();
   });
 })();
+</script>
