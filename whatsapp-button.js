@@ -1,22 +1,22 @@
-<script>
 (function() {
   'use strict';
 
   document.addEventListener('DOMContentLoaded', function() {
     const defaults = {
       phone: "", message: "Hello!", helpText: "How can we help you?",
-      helpPosition: "top", helpDelayMs: 800, helpDurationMs: 0,
-      helpDismissible: true, rememberHelpClose: false, helpCloseTTLHours: 0,
+      helpPosition: "top", helpDelayMs: 800, helpDurationMs: 0, 
+      helpDismissible: true, rememberHelpClose: false, helpCloseTTLHours: 0, 
       badge: "", badgePulse: true, offset: { bottom: 20, side: 20 }
     };
     const userConfig = window.SetlyyWhatsApp || {};
+    // La configuration de l'utilisateur est prioritaire
     const config = { ...defaults, ...userConfig, offset: { ...defaults.offset, ...userConfig.offset } };
 
     if (!config.phone) {
       console.error("Setlyy Widget: WhatsApp phone number is not defined.");
       return;
     }
-
+    
     const STORAGE_KEY = `setlyy_whatsapp_closed_${config.phone}`;
 
     function createWidgetElements() {
@@ -28,7 +28,28 @@
       widget.href = `https://wa.me/${config.phone.replace(/\D/g, '')}?text=${encodeURIComponent(config.message)}`;
       widget.setAttribute('aria-label', 'Contact us on WhatsApp');
 
-      // --- BOUTON ---
+      let bubble = null;
+      
+      // NOUVELLE LOGIQUE : Créer la bulle d'aide uniquement si helpText n'est pas vide
+      const hasHelpText = config.helpText && config.helpText.trim().length > 0;
+      
+      if (hasHelpText) {
+          bubble = document.createElement('div');
+          bubble.classList.add('setlyy-bubble');
+          
+          const bubbleText = document.createElement('p');
+          bubbleText.textContent = config.helpText;
+          bubble.appendChild(bubbleText);
+          
+          if (config.helpDismissible) {
+            const dismissBtn = document.createElement('button');
+            dismissBtn.classList.add('setlyy-dismiss-btn');
+            dismissBtn.setAttribute('aria-label', 'Dismiss');
+            dismissBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
+            bubble.appendChild(dismissBtn);
+          }
+      }
+      
       const button = document.createElement('div');
       button.classList.add('setlyy-button');
       button.innerHTML = `
@@ -52,32 +73,15 @@
         badgeContainer.appendChild(badge);
         button.appendChild(badgeContainer);
       }
-
-      // --- BULLE D’AIDE (créée uniquement si helpText non vide) ---
-      let bubble = null; // NEW
-      const hasHelpText = typeof config.helpText === 'string' && config.helpText.trim().length > 0; // NEW
-      if (hasHelpText) { // NEW
-        bubble = document.createElement('div');
-        bubble.classList.add('setlyy-bubble');
-
-        const bubbleText = document.createElement('p');
-        bubbleText.textContent = config.helpText;
-        bubble.appendChild(bubbleText);
-
-        if (config.helpDismissible) {
-          const dismissBtn = document.createElement('button');
-          dismissBtn.classList.add('setlyy-dismiss-btn');
-          dismissBtn.setAttribute('aria-label', 'Dismiss');
-          dismissBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
-          bubble.appendChild(dismissBtn);
-        }
+      
+      // Ajouter la bulle uniquement si elle a été créée
+      if (bubble) {
+        widget.appendChild(bubble);
       }
 
-      // Assemble
-      if (bubble) widget.appendChild(bubble); // NEW (n’ajoute la bulle que si elle existe)
       widget.appendChild(button);
       document.body.appendChild(widget);
-
+      
       return { widget, bubble };
     }
 
@@ -107,12 +111,31 @@
         }
         .setlyy-widget:hover .setlyy-button { transform: scale(1.1); }
         .setlyy-icon {
-          width: 50%; height: 50%; color: white; display: flex; align-items: center; justify-content: center; line-height: 0;
+          width: 50%; height: 50%; color: white;
+          display: flex; align-items: center; justify-content: center;
+          line-height: 0;
         }
-        .setlyy-icon svg { display: block; width: 100%; height: 100%; fill: currentColor; }
-        .setlyy-badge-container { position: absolute; top: -0.25rem; right: -0.25rem; display: flex; height: 1.25rem; width: 1.25rem; }
-        .setlyy-badge-static { position: relative; display: inline-flex; border-radius: 9999px; height: 1.25rem; width: 1.25rem; background-color: #ef4444; color: white; font-size: 0.75rem; font-weight: bold; align-items: center; justify-content: center; }
-        .setlyy-badge-ping { animation: setlyy-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; position: absolute; display: inline-flex; height: 100%; width: 100%; border-radius: 9999px; background-color: #f87171; opacity: 0.75; }
+        .setlyy-icon svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+          fill: currentColor;
+        }
+        .setlyy-badge-container {
+          position: absolute; top: -0.25rem; right: -0.25rem;
+          display: flex; height: 1.25rem; width: 1.25rem;
+        }
+        .setlyy-badge-static {
+          position: relative; display: inline-flex; border-radius: 9999px;
+          height: 1.25rem; width: 1.25rem; background-color: #ef4444;
+          color: white; font-size: 0.75rem; font-weight: bold;
+          align-items: center; justify-content: center;
+        }
+        .setlyy-badge-ping {
+          animation: setlyy-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+          position: absolute; display: inline-flex; height: 100%; width: 100%;
+          border-radius: 9999px; background-color: #f87171; opacity: 0.75;
+        }
         @keyframes setlyy-ping { 75%, 100% { transform: scale(2); opacity: 0; } }
         .setlyy-bubble {
           position: absolute; background-color: white; border-radius: 0.5rem;
@@ -123,8 +146,17 @@
           width: 85vw; max-width: 280px;
         }
         .setlyy-bubble.setlyy-bubble--visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-        .setlyy-bubble p { margin: 0; color: #1f2937; font-size: clamp(0.8125rem, 4vw, 0.90rem); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .setlyy-dismiss-btn { position: absolute; top: -0.5rem; right: -0.5rem; background-color: #e2e8f0; border-radius: 9999px; padding: 2px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
+        .setlyy-bubble p {
+          margin: 0; color: #1f2937;
+          font-size: clamp(0.8125rem, 4vw, 0.90rem);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .setlyy-dismiss-btn {
+          position: absolute; top: -0.5rem; right: -0.5rem;
+          background-color: #e2e8f0; border-radius: 9999px;
+          padding: 2px; border: none; cursor: pointer; display: flex;
+          align-items: center; justify-content: center; color: #64748b;
+        }
         .setlyy-dismiss-btn:hover { color: #1e293b; }
         .setlyy-dismiss-btn svg { width: 1rem; height: 1rem; }
       `;
@@ -132,11 +164,11 @@
       styleSheet.innerText = css;
       document.head.appendChild(styleSheet);
     }
-
+    
     function initializeLogic(widget, bubble) {
       widget.style.setProperty('--setlyy-offset-bottom', `${config.offset.bottom}px`);
       widget.style.setProperty('--setlyy-offset-side', `${config.offset.side}px`);
-
+      
       widget.addEventListener('click', () => {
         const trackClick = async () => {
           try {
@@ -152,9 +184,9 @@
         trackClick();
       });
 
-      // Si pas de bulle (helpText vide), on sort. // NEW
-      if (!bubble) return; // NEW
-
+      // Si bubble est null (helpText vide), on ne continue pas la logique d'affichage de la bulle
+      if (!bubble) return;
+      
       let wasClosedManually = false;
       let lastClosedTimestamp = 0;
       try {
@@ -167,6 +199,7 @@
 
       const hoursSinceLastClose = (Date.now() - lastClosedTimestamp) / (3600 * 1000);
       const shouldHideBubble = (config.rememberHelpClose && wasClosedManually && (!config.helpCloseTTLHours || hoursSinceLastClose < config.helpCloseTTLHours));
+
       if (shouldHideBubble) return;
 
       const showBubble = () => bubble.classList.add('setlyy-bubble--visible');
@@ -181,25 +214,22 @@
           }
         }, config.helpDelayMs + config.helpDurationMs);
       }
-
+      
       if (config.helpDismissible) {
         const dismissBtn = bubble.querySelector('.setlyy-dismiss-btn');
-        if (dismissBtn) {
-          dismissBtn.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            clearTimeout(showTimeout);
-            hideBubble();
-            if (config.rememberHelpClose) {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify({ manual: true, timestamp: Date.now() }));
-            }
-          });
-        }
+        dismissBtn.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          clearTimeout(showTimeout);
+          hideBubble();
+          if (config.rememberHelpClose) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ manual: true, timestamp: Date.now() }));
+          }
+        });
       }
     }
-
+    
     injectStyles();
     const { widget, bubble } = createWidgetElements();
     initializeLogic(widget, bubble);
   });
 })();
-</script>
